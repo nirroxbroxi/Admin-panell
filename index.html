@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nirrox Games - Panneau d'Administration</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#6366f1',
+              600: '#4f46e5',
+              950: '#09090b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #09090b;
+      background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
+    }
+    .glass-card {
+      background: rgba(18, 18, 22, 0.85);
+      backdrop-filter: blur(16px);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 text-slate-100">
+
+  <div class="w-full max-w-md">
+    
+    <!-- Header Admin -->
+    <div class="text-center mb-8 space-y-2">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-black text-white text-2xl mx-auto shadow-lg shadow-indigo-500/30">
+        N
+      </div>
+      <h1 class="text-2xl font-black text-white">Nirrox Games Admin</h1>
+      <p class="text-xs text-slate-400">Panneau de contrôle et d'ajout de jeux</p>
+    </div>
+
+    <!-- 1. Ecran de Connexion -->
+    <div id="login-box" class="glass-card rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5">
+      <div class="space-y-1">
+        <h2 class="font-bold text-lg text-white">Connexion Sécurisée</h2>
+        <p class="text-xs text-slate-400">Entre ton mot de passe administrateur.</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Mot de passe</label>
+          <input type="password" id="admin-pass" class="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+        </div>
+
+        <button onclick="seConnecterAdmin()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-indigo-600/30">
+          Se connecter
+        </button>
+
+        <p id="error-msg" class="text-xs text-red-400 font-bold text-center hidden">Mot de passe incorrect !</p>
+      </div>
+    </div>
+
+    <!-- 2. Ecran Gestionnaire (Affiché après connexion) -->
+    <div id="dashboard-box" class="glass-card rounded-3xl p-6 border border-white/10 shadow-2xl space-y-6 hidden">
+      
+      <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span> Connecté
+        </div>
+        <button onclick="seDeconnecter()" class="text-xs text-slate-400 hover:text-white transition">
+          Déconnexion
+        </button>
+      </div>
+
+      <!-- Formulaire d'Ajout de Jeu -->
+      <div class="space-y-4">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-plus text-indigo-400"></i> Publier un nouveau jeu
+        </h3>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">1. Fichier du jeu (.html)</label>
+          <input type="file" id="game-file" accept=".html" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer bg-black/40 p-2 rounded-xl border border-white/10">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">2. GitHub Personal Access Token (PAT)</label>
+          <input type="password" id="github-token" class="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="ghp_xxxxxxxxxxxx">
+          <span class="text-[10px] text-slate-500 mt-1 block">Ce token permet à cet admin d'envoyer le fichier directement sur ton dépôt.</span>
+        </div>
+
+        <button onclick="ajouterJeuSurGitHub()" id="btn-upload" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30">
+          <i class="fa-solid fa-upload"></i> Envoyer le jeu sur Nirrox Games
+        </button>
+      </div>
+
+      <!-- Statut de l'envoi -->
+      <div id="status-box" class="hidden p-3 rounded-xl text-xs text-center font-bold"></div>
+
+    </div>
+
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
