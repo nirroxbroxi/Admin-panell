@@ -4,6 +4,10 @@
 
 const ADMIN_PASSWORD = "NirroxAdmin2026!";
 
+// Configuration du dépôt principal de jeux
+const GITHUB_OWNER = "nirroxbroxi";
+const GITHUB_REPO = "Nirrox-Games-official";
+
 function seConnecterAdmin() {
   const passInput = document.getElementById("admin-pass").value;
   const errorMsg = document.getElementById("error-msg");
@@ -15,14 +19,104 @@ function seConnecterAdmin() {
     loginBox.classList.add("hidden");
     dashboardBox.classList.remove("hidden");
 
-    // Restaure le Webhook enregistré sur ton navigateur
+    // Restaure le Webhook et Token enregistrés sur ton navigateur
     const savedWebhook = localStorage.getItem("nirrox_discord_webhook");
     if (savedWebhook) {
-      document.getElementById("discord-webhook-url").value = savedWebhook;
+      const el = document.getElementById("discord-webhook-url");
+      if (el) el.value = savedWebhook;
+    }
+    const savedToken = localStorage.getItem("nirrox_github_token");
+    if (savedToken) {
+      const elToken = document.getElementById("github-token-input");
+      if (elToken) elToken.value = savedToken;
     }
   } else {
     if (errorMsg) errorMsg.classList.remove("hidden");
   }
+}
+
+function seDeconnecter() {
+  document.getElementById("login-box").classList.remove("hidden");
+  document.getElementById("dashboard-box").classList.add("hidden");
+  document.getElementById("admin-pass").value = "";
+}
+
+/**
+ * Uploader un fichier jeu .html directement sur GitHub (/Jeux/)
+ */
+async function uploaderJeuGitHub() {
+  const fileInput = document.getElementById("game-file-input");
+  const tokenInput = document.getElementById("github-token-input")?.value.trim();
+  const btnUpload = document.getElementById("btn-upload-game");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    afficherStatut("Veuillez choisir un fichier .html de jeu !", "error");
+    return;
+  }
+
+  if (!tokenInput) {
+    afficherStatut("Veuillez coller votre GitHub Personal Access Token (PAT) !", "error");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if (!file.name.endsWith(".html")) {
+    afficherStatut("Le fichier doit obligatoirement être un fichier HTML (.html) !", "error");
+    return;
+  }
+
+  // Sauvegarde le Token sur ton navigateur
+  localStorage.setItem("nirrox_github_token", tokenInput);
+
+  btnUpload.disabled = true;
+  btnUpload.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Envoi vers GitHub...`;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const rawContent = e.target.result;
+
+    // Convertit le code source du jeu en base64 pour GitHub
+    const bytes = new TextEncoder().encode(rawContent);
+    let binString = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binString += String.fromCharCode(bytes[i]);
+    }
+    const base64Content = btoa(binString);
+
+    const filePath = `Jeux/${file.name}`;
+    const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${tokenInput}`,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `🎮 Ajout auto du jeu ${file.name}`,
+          content: base64Content
+        })
+      });
+
+      if (res.ok || res.status === 201) {
+        afficherStatut(`🎉 Jeu '${file.name}' ajouté avec succès sur ton site principal !`, "success");
+        fileInput.value = "";
+      } else {
+        const errorData = await res.json();
+        afficherStatut(`Erreur GitHub (${res.status}) : ${errorData.message || 'Token invalide ou sans permission repo'}`, "error");
+      }
+    } catch (err) {
+      afficherStatut("Erreur de connexion au serveur GitHub.", "error");
+      console.error(err);
+    } finally {
+      btnUpload.disabled = false;
+      btnUpload.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Téléverser le jeu sur le site`;
+    }
+  };
+
+  reader.readAsText(file);
 }
 
 function seDeconnecter() {
@@ -75,12 +169,17 @@ async function envoyerAnnonceDiscord() {
   const webhookUrl = document.getElementById("discord-webhook-url").value.trim();
   const title = document.getElementById("announce-title").value.trim() || "🎮 NOUVEAU JEU DISPONIBLE !";
   const desc = document.getElementById("announce-desc").value.trim() || "Un nouveau jeu vient d'être ajouté sur le site ! Venez jouer dès maintenant.";
+  const hexColor = document.getElementById("announce-color")?.value || "#6366f1";
+  const siteUrl = document.getElementById("announce-url")?.value.trim() || "https://nirroxbroxi.github.io/Nirrox-Games-official/";
   const btnSend = document.getElementById("btn-send-discord");
 
   if (!webhookUrl) {
     afficherStatut("Colle ton lien Webhook une première fois !", "error");
     return;
   }
+
+  // Convertit la couleur HEX (#6366f1) en nombre entier pour Discord Embed
+  const decimalColor = parseInt(hexColor.replace("#", ""), 16);
 
   // Sauvegarde automatique du webhook sur ton navigateur
   localStorage.setItem("nirrox_discord_webhook", webhookUrl);
@@ -95,8 +194,8 @@ async function envoyerAnnonceDiscord() {
       {
         title: title,
         description: desc,
-        url: "https://nirroxbroxi.github.io/Nirrox-Games-official/",
-        color: 6512625, // Couleur violette / indigo
+        url: siteUrl,
+        color: decimalColor,
         footer: {
           text: "Nirrox Games • Plateforme Officielle"
         },
