@@ -32,6 +32,43 @@ function seDeconnecter() {
 }
 
 /**
+ * Charge un modèle de message pré-fait selon le bouton cliqué
+ */
+function chargerModele(type) {
+  const titleInput = document.getElementById("announce-title");
+  const descInput = document.getElementById("announce-desc");
+  const colorInput = document.getElementById("announce-color");
+
+  if (!titleInput || !descInput) return;
+
+  switch (type) {
+    case 'nouveauJeu':
+      titleInput.value = "🎮 NOUVEAU JEU DISPONIBLE !";
+      descInput.value = "Un tout nouveau jeu vient d'être ajouté sur Nirrox Games ! Venez l'essayer dès maintenant !";
+      if (colorInput) colorInput.value = "#6366f1"; // Violet / Indigo
+      break;
+
+    case 'maj':
+      titleInput.value = "🚀 CHANGEMENT DE VERSION / MISE À JOUR";
+      descInput.value = "Une nouvelle mise à jour est en ligne ! Retrouvez de nouvelles fonctionnalités, des correctifs et une meilleure expérience sur le site.";
+      if (colorInput) colorInput.value = "#10b981"; // Vert Émeraude
+      break;
+
+    case 'maintenance':
+      titleInput.value = "🛠️ MAINTENANCE EN COURS";
+      descInput.value = "Le site Nirrox Games est actuellement en maintenance pour amélioration des serveurs. De retour très vite !";
+      if (colorInput) colorInput.value = "#f59e0b"; // Orange / Ambre
+      break;
+
+    case 'event':
+      titleInput.value = "🚨 GROS BUG / DYSFONCTIONNEMENT SIGNALÉ";
+      descInput.value = "Un problème technique a été détecté sur le site. Nos équipes travaillent dessus pour résoudre le souci au plus vite ! Merci de votre patience.";
+      if (colorInput) colorInput.value = "#ef4444"; // Rouge Alerte
+      break;
+  }
+}
+
+/**
  * Envoie l'annonce en 1 clic
  */
 async function envoyerAnnonceDiscord() {
