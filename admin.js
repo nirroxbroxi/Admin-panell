@@ -1,14 +1,9 @@
 /**
- * Nirrox Games Admin - Script du 2ème Site (admin.js)
- * Gère la connexion et le transfert de jeux vers le site principal.
+ * Nirrox Games Admin - Script d'Annonces Discord (admin.js)
+ * Permet d'envoyer des annonces formatées (Embeds) sur un salon Discord via Webhook.
  */
 
-// Mot de passe d'accès pour ce 2ème site admin
 const ADMIN_PASSWORD = "NirroxAdmin2026!";
-
-// Informations de ton 1er site (où sont stockés les jeux)
-const TARGET_GITHUB_OWNER = "nirroxbroxi";
-const TARGET_GITHUB_REPO = "Nirrox-Games-official";
 
 function seConnecterAdmin() {
   const passInput = document.getElementById("admin-pass").value;
@@ -20,6 +15,12 @@ function seConnecterAdmin() {
     if (errorMsg) errorMsg.classList.add("hidden");
     loginBox.classList.add("hidden");
     dashboardBox.classList.remove("hidden");
+
+    // Restaure automatiquement le lien Webhook sauvegardé sur ton appareil
+    const savedWebhook = localStorage.getItem("nirrox_discord_webhook");
+    if (savedWebhook) {
+      document.getElementById("discord-webhook-url").value = savedWebhook;
+    }
   } else {
     if (errorMsg) errorMsg.classList.remove("hidden");
   }
@@ -31,112 +32,110 @@ function seDeconnecter() {
   document.getElementById("admin-pass").value = "";
 }
 
-async function ajouterJeuSurGitHub() {
-  const fileInput = document.getElementById("game-file");
-  const tokenInput = document.getElementById("github-token").value.trim();
-  const statusBox = document.getElementById("status-box");
-  const btnUpload = document.getElementById("btn-upload");
+/**
+ * Modèles pré-faits d'annonces
+ */
+const modelesAnnonces = {
+  nouveauJeu: {
+    titre: "🎮 NOUVEAU JEU DISPONIBLE !",
+    desc: "Un nouveau jeu vient d'être ajouté sur Nirrox Games ! Venez l'essayer dès maintenant.",
+    couleur: "#6366f1"
+  },
+  maj: {
+    titre: "🚀 MISE À JOUR DU SITE",
+    desc: "Le site Nirrox Games a été mis à jour avec de nouvelles fonctionnalités et des corrections de bugs !",
+    couleur: "#10b981"
+  },
+  maintenance: {
+    titre: "🛠️ MAINTENANCE PROGRAMMÉE",
+    desc: "Une courte maintenance est en cours sur le site pour ajouter de nouveaux jeux. À tout de suite !",
+    couleur: "#f59e0b"
+  },
+  event: {
+    titre: "🏆 ÉVÉNEMENT DU WEEK-END",
+    desc: "Qui fera le meilleur score aujourd'hui ? Défiez vos amis sur nos jeux HTML5 !",
+    couleur: "#a855f7"
+  }
+};
 
-  if (!fileInput.files || fileInput.files.length === 0) {
-    afficherStatut("Sélectionne un fichier HTML !", "error");
+function chargerModele(cle) {
+  const mod = modelesAnnonces[cle];
+  if (!mod) return;
+
+  document.getElementById("announce-title").value = mod.titre;
+  document.getElementById("announce-desc").value = mod.desc;
+  document.getElementById("announce-color").value = mod.couleur;
+}
+
+/**
+ * Envoie l'annonce à Discord via Webhook
+ */
+async function envoyerAnnonceDiscord() {
+  const webhookUrl = document.getElementById("discord-webhook-url").value.trim();
+  const title = document.getElementById("announce-title").value.trim();
+  const desc = document.getElementById("announce-desc").value.trim();
+  const colorHex = document.getElementById("announce-color").value;
+  const siteUrl = document.getElementById("announce-url").value.trim();
+  const btnSend = document.getElementById("btn-send-discord");
+
+  if (!webhookUrl) {
+    afficherStatut("Veuillez coller votre URL Webhook Discord !", "error");
     return;
   }
 
-  if (!tokenInput) {
-    afficherStatut("Entre ton GitHub Access Token (PAT) !", "error");
+  // Sauvegarde le Webhook uniquement sur ton navigateur local
+  localStorage.setItem("nirrox_discord_webhook", webhookUrl);
+
+  if (!title || !desc) {
+    afficherStatut("Le titre et la description ne peuvent pas être vides !", "error");
     return;
   }
 
-  const file = fileInput.files[0];
-  if (!file.name.toLowerCase().endsWith('.html')) {
-    afficherStatut("Le fichier doit obligatoirement se terminer par .html !", "error");
-    return;
-  }
+  // Conversion de la couleur Hex (#6366f1) en nombre decimal pour Discord
+  const colorDecimal = parseInt(colorHex.replace("#", ""), 16);
 
-  btnUpload.disabled = true;
-  btnUpload.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Envoi en cours...`;
-  afficherStatut("Lecture et encodage du jeu...", "info");
+  btnSend.disabled = true;
+  btnSend.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Envoi de l'annonce...`;
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try {
-      const content = e.target.result;
-
-      // Encodage Base64 compatible UTF-8 (supporte les accents et caractères spéciaux du jeu)
-      const bytes = new TextEncoder().encode(content);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64Content = btoa(binary);
-
-      const fileNameClean = file.name.replace(/\s+/g, '-');
-      const filePath = `Jeux/${fileNameClean}`;
-      const apiUrl = `https://api.github.com/repos/${TARGET_GITHUB_OWNER}/${TARGET_GITHUB_REPO}/contents/${filePath}`;
-
-      afficherStatut(`Envoi vers GitHub (${filePath})...`, "info");
-
-      // Vérification préalable pour savoir si le fichier existe déjà (nécessite son 'sha' pour le remplacer)
-      let fileSha = null;
-      try {
-        const checkRes = await fetch(apiUrl, {
-          headers: {
-            "Authorization": `Bearer ${tokenInput}`,
-            "Accept": "application/vnd.github+json"
-          }
-        });
-        if (checkRes.ok) {
-          const existingData = await checkRes.json();
-          fileSha = existingData.sha;
-        }
-      } catch (errCheck) {
-        console.warn("Nouveau fichier détecté");
-      }
-
-      // Préparation du payload PUT
-      const bodyData = {
-        message: `Ajout/Mise à jour du jeu ${fileNameClean} via Admin Panel`,
-        content: base64Content
-      };
-      if (fileSha) {
-        bodyData.sha = fileSha;
-      }
-
-      const response = await fetch(apiUrl, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${tokenInput}`,
-          "Accept": "application/vnd.github+json",
-          "Content-Type": "application/json"
+  // Structure du message Discord Embed
+  const payload = {
+    username: "Nirrox Games Bot",
+    avatar_url: "https://raw.githubusercontent.com/nirroxbroxi/Nirrox-Games-official/main/favicon.ico",
+    embeds: [
+      {
+        title: title,
+        description: desc,
+        url: siteUrl || null,
+        color: colorDecimal,
+        footer: {
+          text: "Nirrox Games • Plateforme Officielle",
         },
-        body: JSON.stringify(bodyData)
-      });
-
-      if (response.ok) {
-        afficherStatut(`🎉 Succès ! Le jeu "${fileNameClean}" a été envoyé sur Nirrox Games !`, "success");
-        fileInput.value = "";
-      } else {
-        const errorData = await response.json();
-        let detailMsg = errorData.message || "Erreur inconnue";
-        if (response.status === 401) {
-          detailMsg = "Token GitHub invalide ou expiré.";
-        } else if (response.status === 404) {
-          detailMsg = "Dépôt GitHub introuvable. Vérifie le pseudo et nom du repo.";
-        } else if (response.status === 403) {
-          detailMsg = "Token sans permission. Coche la case 'repo' lors de la création du Token GitHub !";
-        }
-        afficherStatut(`Erreur (${response.status}) : ${detailMsg}`, "error");
+        timestamp: new Date().toISOString()
       }
-    } catch (err) {
-      afficherStatut("Erreur lors du traitement du fichier ou réseau.", "error");
-      console.error(err);
-    } finally {
-      btnUpload.disabled = false;
-      btnUpload.innerHTML = `<i class="fa-solid fa-upload"></i> Envoyer le jeu sur Nirrox Games`;
-    }
+    ]
   };
 
-  reader.readAsText(file);
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok || res.status === 204) {
+      afficherStatut("🎉 Annonce publiée sur Discord avec succès !", "success");
+    } else {
+      afficherStatut(`Erreur Discord (${res.status}) : Vérifie ton lien Webhook.`, "error");
+    }
+  } catch (err) {
+    afficherStatut("Erreur réseau ou URL Webhook invalide.", "error");
+    console.error(err);
+  } finally {
+    btnSend.disabled = false;
+    btnSend.innerHTML = `<i class="fa-brands fa-discord"></i> Publier l'annonce sur Discord`;
+  }
 }
 
 function afficherStatut(message, type) {
